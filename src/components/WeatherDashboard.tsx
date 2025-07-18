@@ -8,12 +8,14 @@ import {
   Eye, 
   MapPin,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  Settings
 } from 'lucide-react';
 import { WeatherCard } from './WeatherCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { WeatherConfigData } from './WeatherConfig';
 
 interface WeatherData {
   stationID: string;
@@ -39,30 +41,63 @@ interface WeatherData {
     precipTotal: number;
     elev: number;
   };
+  metric: {
+    temp: number;
+    heatIndex: number;
+    dewpt: number;
+    windChill: number;
+    windSpeed: number;
+    windGust: number;
+    pressure: number;
+    precipRate: number;
+    precipTotal: number;
+    elev: number;
+  };
 }
 
 interface WeatherResponse {
   observations: WeatherData[];
 }
 
-export const WeatherDashboard = () => {
+interface WeatherDashboardProps {
+  config: WeatherConfigData;
+  onSettingsClick: () => void;
+}
+
+export const WeatherDashboard = ({ config, onSettingsClick }: WeatherDashboardProps) => {
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const { toast } = useToast();
 
-  const API_URL = "https://api.weather.com/v2/pws/observations/current?apiKey=d90d5c85931b4fdb8d5c85931b2fdb05&format=json&stationId=IBORLN23&units=e";
+  const buildApiUrl = () => {
+    const baseUrl = "https://api.weather.com/v2/pws/observations/current";
+    const params = new URLSearchParams({
+      apiKey: config.apiKey,
+      format: 'json',
+      stationId: config.stationId,
+      units: 'm' // metric units
+    });
+    return `${baseUrl}?${params.toString()}`;
+  };
 
   const fetchWeatherData = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const response = await fetch(API_URL);
+      const apiUrl = buildApiUrl();
+      const response = await fetch(apiUrl);
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        if (response.status === 401) {
+          throw new Error('Invalid API key. Please check your configuration.');
+        } else if (response.status === 404) {
+          throw new Error('Weather station not found. Please check your station ID.');
+        } else {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
       }
       
       const data: WeatherResponse = await response.json();
@@ -76,7 +111,7 @@ export const WeatherDashboard = () => {
           duration: 3000,
         });
       } else {
-        throw new Error('No weather data available');
+        throw new Error('No weather data available for this station');
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch weather data';
@@ -99,7 +134,7 @@ export const WeatherDashboard = () => {
     const interval = setInterval(fetchWeatherData, 5 * 60 * 1000);
     
     return () => clearInterval(interval);
-  }, []);
+  }, [config.apiKey, config.stationId]);
 
   const formatTime = (dateString: string) => {
     return new Date(dateString).toLocaleTimeString('en-US', {
@@ -113,9 +148,25 @@ export const WeatherDashboard = () => {
     return directions[Math.round(degrees / 22.5) % 16];
   };
 
+  const formatTemperature = (temp: number) => {
+    return Math.round(temp);
+  };
+
+  const formatPressure = (pressure: number) => {
+    return Math.round(pressure);
+  };
+
+  const formatWindSpeed = (speed: number) => {
+    return Math.round(speed);
+  };
+
+  const formatPrecipitation = (precip: number) => {
+    return precip.toFixed(1);
+  };
+
   if (loading && !weatherData) {
     return (
-      <div className="min-h-screen bg-sky-gradient flex items-center justify-center">
+      <div className="min-h-screen bg-sky-gradient flex items-center justify-center p-4">
         <div className="text-center space-y-4">
           <RefreshCw className="w-12 h-12 text-primary animate-weather-rotate mx-auto" />
           <h2 className="text-2xl font-semibold text-foreground">Loading Weather Data...</h2>
@@ -127,16 +178,22 @@ export const WeatherDashboard = () => {
 
   if (error && !weatherData) {
     return (
-      <div className="min-h-screen bg-sky-gradient flex items-center justify-center">
-        <Card className="w-full max-w-md mx-4">
+      <div className="min-h-screen bg-sky-gradient flex items-center justify-center p-4">
+        <Card className="w-full max-w-md bg-card-gradient border-0 shadow-weather">
           <CardContent className="p-8 text-center space-y-4">
             <AlertCircle className="w-16 h-16 text-destructive mx-auto" />
             <h2 className="text-2xl font-semibold text-foreground">Weather Unavailable</h2>
-            <p className="text-muted-foreground">{error}</p>
-            <Button onClick={fetchWeatherData} className="w-full">
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Try Again
-            </Button>
+            <p className="text-muted-foreground text-sm">{error}</p>
+            <div className="space-y-3">
+              <Button onClick={fetchWeatherData} className="w-full">
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Try Again
+              </Button>
+              <Button onClick={onSettingsClick} variant="outline" className="w-full">
+                <Settings className="w-4 h-4 mr-2" />
+                Check Settings
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -147,56 +204,66 @@ export const WeatherDashboard = () => {
 
   return (
     <div className="min-h-screen bg-sky-gradient">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-4 max-w-4xl">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6">
           <Card className="bg-card-gradient border-0 shadow-weather">
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <MapPin className="w-8 h-8 text-primary" />
+                  <MapPin className="w-6 h-6 md:w-8 md:h-8 text-primary" />
                   <div>
-                    <CardTitle className="text-3xl font-bold text-foreground">
+                    <CardTitle className="text-xl md:text-3xl font-bold text-foreground">
                       {weatherData.neighborhood}
                     </CardTitle>
-                    <p className="text-muted-foreground">
-                      Station: {weatherData.stationID} • {weatherData.country}
+                    <p className="text-sm text-muted-foreground">
+                      {weatherData.stationID} • {weatherData.country}
                     </p>
                   </div>
                 </div>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={fetchWeatherData}
-                  disabled={loading}
-                >
-                  <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-weather-rotate' : ''}`} />
-                  Refresh
-                </Button>
+                <div className="flex space-x-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={fetchWeatherData}
+                    disabled={loading}
+                  >
+                    <RefreshCw className={`w-4 h-4 ${loading ? 'animate-weather-rotate' : ''}`} />
+                    <span className="hidden sm:inline ml-2">Refresh</span>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={onSettingsClick}
+                  >
+                    <Settings className="w-4 h-4" />
+                    <span className="hidden sm:inline ml-2">Settings</span>
+                  </Button>
+                </div>
               </div>
             </CardHeader>
           </Card>
         </div>
 
         {/* Main Temperature Card */}
-        <div className="mb-8">
+        <div className="mb-6">
           <Card className="bg-temperature-gradient border-0 shadow-weather text-white">
-            <CardContent className="p-8">
+            <CardContent className="p-6 md:p-8">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-6">
-                  <Thermometer className="w-16 h-16 text-white/90" />
+                <div className="flex items-center space-x-4 md:space-x-6">
+                  <Thermometer className="w-12 h-12 md:w-16 md:h-16 text-white/90" />
                   <div>
-                    <div className="text-6xl font-bold">
-                      {weatherData.imperial.temp}°F
+                    <div className="text-4xl md:text-6xl font-bold">
+                      {formatTemperature(weatherData.metric.temp)}°C
                     </div>
-                    <div className="text-xl text-white/80">
-                      Feels like {weatherData.imperial.heatIndex}°F
+                    <div className="text-lg md:text-xl text-white/80">
+                      Feels like {formatTemperature(weatherData.metric.heatIndex)}°C
                     </div>
                   </div>
                 </div>
                 <div className="text-right text-white/80">
-                  <div className="text-sm">Last Updated</div>
-                  <div className="text-lg font-semibold">
+                  <div className="text-xs md:text-sm">Last Updated</div>
+                  <div className="text-sm md:text-lg font-semibold">
                     {formatTime(weatherData.obsTimeLocal)}
                   </div>
                 </div>
@@ -206,20 +273,20 @@ export const WeatherDashboard = () => {
         </div>
 
         {/* Weather Metrics Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <WeatherCard
             title="Humidity"
             value={weatherData.humidity}
             unit="%"
-            icon={<Droplets className="w-6 h-6 text-weather-humidity" />}
+            icon={<Droplets className="w-5 h-5 md:w-6 md:h-6 text-weather-humidity" />}
             delay={100}
           />
           
           <WeatherCard
             title="Wind Speed"
-            value={weatherData.imperial.windSpeed}
-            unit="mph"
-            icon={<Wind className="w-6 h-6 text-weather-wind" />}
+            value={formatWindSpeed(weatherData.metric.windSpeed)}
+            unit="km/h"
+            icon={<Wind className="w-5 h-5 md:w-6 md:h-6 text-weather-wind" />}
             delay={200}
           />
           
@@ -227,89 +294,89 @@ export const WeatherDashboard = () => {
             title="Wind Direction"
             value={getWindDirection(weatherData.winddir)}
             unit={`${weatherData.winddir}°`}
-            icon={<Wind className="w-6 h-6 text-weather-wind" style={{ transform: `rotate(${weatherData.winddir}deg)` }} />}
+            icon={<Wind className="w-5 h-5 md:w-6 md:h-6 text-weather-wind" style={{ transform: `rotate(${weatherData.winddir}deg)` }} />}
             delay={300}
           />
           
           <WeatherCard
             title="Pressure"
-            value={weatherData.imperial.pressure}
-            unit="inHg"
-            icon={<Gauge className="w-6 h-6 text-weather-pressure" />}
+            value={formatPressure(weatherData.metric.pressure)}
+            unit="hPa"
+            icon={<Gauge className="w-5 h-5 md:w-6 md:h-6 text-weather-pressure" />}
             delay={400}
           />
           
           <WeatherCard
             title="UV Index"
             value={weatherData.uv}
-            icon={<Sun className="w-6 h-6 text-weather-uv" />}
+            icon={<Sun className="w-5 h-5 md:w-6 md:h-6 text-weather-uv" />}
             delay={500}
           />
           
           <WeatherCard
             title="Solar Radiation"
-            value={weatherData.solarRadiation}
+            value={Math.round(weatherData.solarRadiation)}
             unit="W/m²"
-            icon={<Sun className="w-6 h-6 text-weather-uv" />}
+            icon={<Sun className="w-5 h-5 md:w-6 md:h-6 text-weather-uv" />}
             delay={600}
           />
           
           <WeatherCard
             title="Dew Point"
-            value={weatherData.imperial.dewpt}
-            unit="°F"
-            icon={<Droplets className="w-6 h-6 text-weather-humidity" />}
+            value={formatTemperature(weatherData.metric.dewpt)}
+            unit="°C"
+            icon={<Droplets className="w-5 h-5 md:w-6 md:h-6 text-weather-humidity" />}
             delay={700}
           />
           
           <WeatherCard
             title="Visibility"
-            value="10"
-            unit="mi"
-            icon={<Eye className="w-6 h-6 text-primary" />}
+            value="16"
+            unit="km"
+            icon={<Eye className="w-5 h-5 md:w-6 md:h-6 text-primary" />}
             delay={800}
           />
         </div>
 
         {/* Additional Info */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <Card className="bg-card-gradient border-0 shadow-card">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Wind className="w-5 h-5 text-weather-wind" />
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center space-x-2 text-base">
+                <Wind className="w-4 h-4 text-weather-wind" />
                 <span>Wind Details</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Wind Gust</span>
-                  <span className="font-semibold">{weatherData.imperial.windGust} mph</span>
+                  <span className="text-sm text-muted-foreground">Wind Gust</span>
+                  <span className="text-sm font-semibold">{formatWindSpeed(weatherData.metric.windGust)} km/h</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Wind Chill</span>
-                  <span className="font-semibold">{weatherData.imperial.windChill}°F</span>
+                  <span className="text-sm text-muted-foreground">Wind Chill</span>
+                  <span className="text-sm font-semibold">{formatTemperature(weatherData.metric.windChill)}°C</span>
                 </div>
               </div>
             </CardContent>
           </Card>
           
           <Card className="bg-card-gradient border-0 shadow-card">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Droplets className="w-5 h-5 text-weather-humidity" />
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center space-x-2 text-base">
+                <Droplets className="w-4 h-4 text-weather-humidity" />
                 <span>Precipitation</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Rate</span>
-                  <span className="font-semibold">{weatherData.imperial.precipRate} in/hr</span>
+                  <span className="text-sm text-muted-foreground">Rate</span>
+                  <span className="text-sm font-semibold">{formatPrecipitation(weatherData.metric.precipRate)} mm/hr</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Total</span>
-                  <span className="font-semibold">{weatherData.imperial.precipTotal} in</span>
+                  <span className="text-sm text-muted-foreground">Total</span>
+                  <span className="text-sm font-semibold">{formatPrecipitation(weatherData.metric.precipTotal)} mm</span>
                 </div>
               </div>
             </CardContent>
@@ -317,8 +384,8 @@ export const WeatherDashboard = () => {
         </div>
 
         {/* Footer */}
-        <div className="mt-8 text-center text-muted-foreground">
-          <p className="text-sm">
+        <div className="text-center text-muted-foreground">
+          <p className="text-xs md:text-sm">
             Data from personal weather station • Updated every 5 minutes
           </p>
           {lastUpdate && (

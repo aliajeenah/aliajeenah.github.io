@@ -1,7 +1,7 @@
-import { WeatherDashboard } from '@/components/WeatherDashboard';
+import { WeatherApp } from '@/components/WeatherApp';
 
 const Index = () => {
-  return <WeatherDashboard />;
+  return <WeatherApp />;
 };
 
 export default Index;
