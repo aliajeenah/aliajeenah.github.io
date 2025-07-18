@@ -9,9 +9,11 @@ import {
   MapPin,
   RefreshCw,
   AlertCircle,
-  Settings
+  Settings,
+  Calendar
 } from 'lucide-react';
 import { WeatherCard } from './WeatherCard';
+import { WeatherHistory } from './WeatherHistory';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -69,6 +71,7 @@ export const WeatherDashboard = ({ config, onSettingsClick }: WeatherDashboardPr
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
   const { toast } = useToast();
 
   const buildApiUrl = () => {
@@ -202,6 +205,16 @@ export const WeatherDashboard = ({ config, onSettingsClick }: WeatherDashboardPr
 
   if (!weatherData) return null;
 
+  // Show history component if requested
+  if (showHistory) {
+    return (
+      <WeatherHistory
+        config={config}
+        onBackClick={() => setShowHistory(false)}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-sky-gradient">
       <div className="container mx-auto px-4 py-4 max-w-4xl">
@@ -230,6 +243,14 @@ export const WeatherDashboard = ({ config, onSettingsClick }: WeatherDashboardPr
                   >
                     <RefreshCw className={`w-4 h-4 ${loading ? 'animate-weather-rotate' : ''}`} />
                     <span className="hidden sm:inline ml-2">Refresh</span>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setShowHistory(true)}
+                  >
+                    <Calendar className="w-4 h-4" />
+                    <span className="hidden sm:inline ml-2">History</span>
                   </Button>
                   <Button 
                     variant="outline" 
