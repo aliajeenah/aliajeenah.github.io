@@ -61,7 +61,32 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				weather: {
+					'card': 'hsl(var(--weather-card))',
+					'card-shadow': 'hsl(var(--weather-card-shadow))',
+					'temperature-primary': 'hsl(var(--temperature-primary))',
+					'temperature-warm': 'hsl(var(--temperature-warm))',
+					'temperature-cool': 'hsl(var(--temperature-cool))',
+					'wind': 'hsl(var(--wind-color))',
+					'humidity': 'hsl(var(--humidity-color))',
+					'pressure': 'hsl(var(--pressure-color))',
+					'uv': 'hsl(var(--uv-color))'
 				}
+			},
+			backgroundImage: {
+				'sky-gradient': 'var(--gradient-sky)',
+				'card-gradient': 'var(--gradient-card)',
+				'temperature-gradient': 'var(--gradient-temperature)'
+			},
+			boxShadow: {
+				'weather': 'var(--shadow-weather)',
+				'card': 'var(--shadow-card)',
+				'glow': 'var(--shadow-glow)'
+			},
+			transitionProperty: {
+				'weather': 'var(--transition-weather)',
+				'smooth': 'var(--transition-smooth)'
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
@@ -84,11 +109,42 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'weather-fade-in': {
+					'0%': {
+						opacity: '0',
+						transform: 'translateY(20px)'
+					},
+					'100%': {
+						opacity: '1',
+						transform: 'translateY(0)'
+					}
+				},
+				'weather-pulse': {
+					'0%, 100%': {
+						transform: 'scale(1)',
+						opacity: '1'
+					},
+					'50%': {
+						transform: 'scale(1.05)',
+						opacity: '0.8'
+					}
+				},
+				'weather-rotate': {
+					'0%': {
+						transform: 'rotate(0deg)'
+					},
+					'100%': {
+						transform: 'rotate(360deg)'
+					}
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'weather-fade-in': 'weather-fade-in 0.6s ease-out',
+				'weather-pulse': 'weather-pulse 3s ease-in-out infinite',
+				'weather-rotate': 'weather-rotate 20s linear infinite'
 			}
 		}
 	},
